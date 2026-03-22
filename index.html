@@ -371,15 +371,22 @@ async function sb(path,opts={}){
     method:opts.method||'GET',body:opts.body!==undefined?JSON.stringify(opts.body):undefined
   });
   if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.message||r.statusText);}
-  return r.status===204?null:r.json();
+  const txt=await r.text();
+  if(!txt||txt.trim()==='')return null;
+  try{return JSON.parse(txt);}catch(e){return null;}
 }
 
-// Use RPC functions to update points (bypasses RLS)
-async function deductPoints(userId, amount){
-  await sb('rpc/deduct_points',{method:'POST',body:{user_id:userId,amount}});
+async function deductPoints(userId,amount){
+  const r=await fetch(SB_URL+'/rest/v1/rpc/deduct_points',{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({user_id:userId,amount:amount})});
+  if(!r.ok){const t=await r.text();throw new Error('deductPoints: '+t);}
 }
-async function addPoints(userId, amount){
-  await sb('rpc/add_points',{method:'POST',body:{user_id:userId,amount}});
+async function addPoints(userId,amount){
+  const r=await fetch(SB_URL+'/rest/v1/rpc/add_points',{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({user_id:userId,amount:amount})});
+  if(!r.ok){const t=await r.text();throw new Error('addPoints: '+t);}
+}
+async function setMatchWinner(matchId,winner){
+  const r=await fetch(SB_URL+'/rest/v1/rpc/set_match_winner',{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({match_id:matchId,winner:winner})});
+  if(!r.ok){const t=await r.text();throw new Error('setMatchWinner: '+t);}
 }
 
 let me=null, allMatches=[], myBets={}, pools={}, activeF='all', activePage='matches';
@@ -815,7 +822,7 @@ async function settleMatch(matchId,winner,teamA,teamB){
         await sb('point_transactions',{method:'POST',prefer:'return=minimal',body:{user_id:bet.user_id,match_id:matchId,type:winner==='refund'?'refund':'win',amount:payout,note:winner==='refund'?'Refund':'Winnings'}});
       }
     }
-    await sb('rpc/set_match_winner',{method:'POST',body:{match_id:matchId,winner:winner}});
+    await setMatchWinner(matchId,winner);
     showToast(winner==='refund'?'↩ All bets refunded!':'🏆 Points paid out!');
     await refreshPts();await loadAll();adminLoadMatches();
   }catch(e){showToast('Error: '+e.message);}
