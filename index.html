@@ -815,7 +815,7 @@ async function settleMatch(matchId,winner,teamA,teamB){
         await sb('point_transactions',{method:'POST',prefer:'return=minimal',body:{user_id:bet.user_id,match_id:matchId,type:winner==='refund'?'refund':'win',amount:payout,note:winner==='refund'?'Refund':'Winnings'}});
       }
     }
-    await sb('rpc/set_match_winner',{method:'POST',body:{match_id:matchId,winner}});
+    await sb('rpc/set_match_winner',{method:'POST',body:{match_id:matchId,winner:winner}});
     showToast(winner==='refund'?'↩ All bets refunded!':'🏆 Points paid out!');
     await refreshPts();await loadAll();adminLoadMatches();
   }catch(e){showToast('Error: '+e.message);}
